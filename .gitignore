@@ -1,0 +1,8 @@
+__pycache__/
+venv/
+*.tar
+.env
+*.json
+*.side
+main2.py
+side.py

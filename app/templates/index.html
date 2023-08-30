@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Web Automation</title>
+</head>
+<body>
+    <h1>Upload your JSON for Web Automation</h1>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="file">
+        <label for="execution_time">Execution Time:</label>
+        <input type="datetime-local" name="execution_time">
+        <input type="submit" value="Upload">
+    </form>
+    
+    <h2>Uploaded Files:</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Filename</th>
+                <th>Execution Time</th>
+                <th>Result</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in uploaded_records %}
+            <tr>
+                <td>{{ record.filename }}</td>
+                <td>{{ record.execution_time }}</td>
+                <td>{{ record.result }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>    
+    {% if uploaded_data %}
+    <h2>Uploaded JSON:</h2>
+    <pre>{{ uploaded_data | tojson }}</pre>
+
+    <h3>Schedule Execution:</h3>
+    <form action="/schedule" method="post">
+        <label for="execution_time">Execution Time:</label>
+        <input type="datetime-local" name="execution_time">
+        <input type="submit" value="Schedule">
+    </form>
+    {% endif %}
+
+    {% if execution_results %}
+    <h2>Execution Results:</h2>
+    <pre>{{ execution_results | tojson }}</pre>
+    {% endif %}
+</body>
+</html>
