@@ -29,3 +29,4 @@ web-automation-app/
 ├── config.py
 ├── run.py
 └── README.md
+└── site.db

@@ -10,8 +10,13 @@ uploaded_records = []  # This is a simple in-memory storage. Consider using a da
 
 @app.route('/')
 def index():
-    uploaded_records = UploadRecord.query.all()
-    return render_template('index.html', uploaded_records=uploaded_records)
+    current_time = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M')
+    
+    # Order by 'completed' in ascending order (incomplete tasks first), 
+    # then by 'created_at' in descending order (newest tasks first).
+    uploaded_records = UploadRecord.query.order_by(UploadRecord.completed, UploadRecord.created_at.desc()).all()
+    
+    return render_template('index.html', uploaded_records=uploaded_records, current_time=current_time)
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -20,6 +25,13 @@ def upload_file():
         return redirect(url_for('index'))
 
     file = request.files['file']
+    execution_time = request.form.get('execution_time')
+    notes = request.form.get('notes')  # Get the notes from the form
+
+    # Check if the necessary fields are filled
+    if not file or not execution_time:
+        flash("所有欄位都必須填寫！", "error")
+        return redirect(url_for('index'))
 
     if file.filename == '':
         flash("No selected file", "error")
@@ -32,8 +44,12 @@ def upload_file():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
         file.save(filepath)
 
-        # Store the execution time and filename in the database
-        record = UploadRecord(filename=unique_filename, execution_time=request.form.get('execution_time'))
+        # Convert execution_time from string to datetime object
+        execution_time_str = request.form.get('execution_time')
+        execution_time_obj = datetime.datetime.strptime(execution_time_str, '%Y-%m-%dT%H:%M')
+
+        # Store the execution time, filename, and notes in the database
+        record = UploadRecord(filename=unique_filename, execution_time=execution_time_obj, notes=notes)  # Add notes here
         db.session.add(record)
         db.session.commit()
 
@@ -43,3 +59,35 @@ def upload_file():
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+@app.route('/redo/<int:record_id>', methods=['POST'])
+def redo_upload(record_id):
+    original_record = UploadRecord.query.get_or_404(record_id)
+    
+    # Convert execution_time from string to datetime object
+    execution_time_str = request.json['execution_time']
+    execution_time_obj = datetime.datetime.strptime(execution_time_str, '%Y-%m-%dT%H:%M')
+
+    # Create a new record with the same filename and new execution time
+    new_record = UploadRecord(
+        filename=original_record.filename,
+        notes=original_record.notes,  # Copy the notes from the original record
+        execution_time=execution_time_obj
+    )
+    db.session.add(new_record)
+    db.session.commit()
+    return jsonify({"message": "Success"}), 200
+
+@app.route('/delete/<int:record_id>', methods=['POST'])
+def delete_upload(record_id):
+    record = UploadRecord.query.get_or_404(record_id)
+    db.session.delete(record)
+    db.session.commit()
+    return redirect(url_for('index'))
+
+@app.route('/mark_completed/<int:record_id>', methods=['POST'])
+def mark_completed(record_id):
+    record = UploadRecord.query.get_or_404(record_id)
+    record.completed = True
+    db.session.commit()
+    return redirect(url_for('index'))

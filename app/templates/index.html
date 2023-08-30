@@ -6,16 +6,19 @@
 <body>
     <h1>Upload your JSON for Web Automation</h1>
     <form action="/upload" method="post" enctype="multipart/form-data">
-        <input type="file" name="file">
+        <input type="file" name="file" required>
+        <label for="notes">Action:</label>
+        <textarea name="notes" id="notes" rows="1" cols="25"></textarea>
         <label for="execution_time">Execution Time:</label>
-        <input type="datetime-local" name="execution_time">
+        <input type="datetime-local" name="execution_time" min="{{ current_time }}" required>
         <input type="submit" value="Upload">
-    </form>
+    </form>  
     
     <h2>Uploaded Files:</h2>
-    <table>
+    <table border="1">
         <thead>
             <tr>
+                <th>Notes</th> <!-- Added a header for Notes -->
                 <th>Filename</th>
                 <th>Execution Time</th>
                 <th>Result</th>
@@ -24,9 +27,15 @@
         <tbody>
             {% for record in uploaded_records %}
             <tr>
+                <td>{{ record.notes }}</td>
                 <td>{{ record.filename }}</td>
                 <td>{{ record.execution_time }}</td>
                 <td>{{ record.result }}</td>
+                <!-- Add "Redo" and "Delete" buttons -->
+                <td>
+                    <button onclick="redoUpload({{ record.id }})">重作</button>
+                    <button onclick="deleteUpload({{ record.id }})">刪除</button>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -49,3 +58,62 @@
     {% endif %}
 </body>
 </html>
+
+
+<!-- ... -->
+<script>
+let currentRedoId = null;  // Store the current record ID for redo
+
+function redoUpload(recordId) {
+    currentRedoId = recordId;
+    document.getElementById('redoModal').style.display = 'block';
+}
+
+function closeRedoModal() {
+    document.getElementById('redoModal').style.display = 'none';
+}
+
+function confirmRedo() {
+    let executionTime = document.getElementById('redoExecutionTime').value;
+    if (executionTime) {
+        // Send a POST request to the redo route
+        fetch(`/redo/${currentRedoId}`, {
+            method: 'POST',
+            body: JSON.stringify({ execution_time: executionTime }),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert("重作失敗");
+            }
+        });
+    }
+    closeRedoModal();
+}
+
+function deleteUpload(recordId) {
+    if (confirm("確定要刪除這個上傳嗎?")) {
+        // Send a POST request to the delete route
+        fetch(`/delete/${recordId}`, {
+            method: 'POST'
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert("刪除失敗");
+            }
+        });
+    }
+}
+</script>
+    
+<!-- Redo Modal -->
+<div id="redoModal" style="display:none; position:fixed; top:20%; left:50%; transform:translate(-50%, -50%); background-color:white; padding:20px; border:1px solid #ccc;">
+    <h3>請輸入新的執行日期:</h3>
+    <input type="datetime-local" id="redoExecutionTime" min="{{ current_time }}">
+    <button onclick="confirmRedo()">確定</button>
+    <button onclick="closeRedoModal()">取消</button>
+</div>
