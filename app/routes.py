@@ -81,8 +81,20 @@ def redo_upload(record_id):
 @app.route('/delete/<int:record_id>', methods=['POST'])
 def delete_upload(record_id):
     record = UploadRecord.query.get_or_404(record_id)
+    
+    # Check how many records in the database use the same filename
+    count_same_filename = UploadRecord.query.filter_by(filename=record.filename).count()
+    
+    # If only the current record uses this file, delete the file
+    if count_same_filename == 1:
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], record.filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+    
+    # Delete the record from the database
     db.session.delete(record)
     db.session.commit()
+    
     return redirect(url_for('index'))
 
 @app.route('/mark_completed/<int:record_id>', methods=['POST'])
